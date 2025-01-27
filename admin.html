@@ -10,10 +10,26 @@
     color:red;
     margin:1px;
 }
+.liens{
+    display: flex;
+    justify-content: space-between;
+}
+.result{
+    margin-bottom:10px;
+}
+.argu{
+    border-top: thick double #32a1ce;
+    padding: 6px;
+}
+.etu{
+    border-top: thick double #ce3232;
+    padding: 6px;
+}
+
     </style>
 </head>
 <body>
-    <h1 id="nomAuteur">Liste des étudiants</h1>
+    <h1 id="nomAuteur">Travaux des étudiants pour le cours GSI 2 : Système d'information et développement Web</h1>
     <div id="data-container"></div>
 
     <script>
@@ -27,19 +43,19 @@
                 .data(data)
                 .enter()
                 .append("div")
-                .attr("id",d=>"etu"+d["Votre identifiant omeka"]);
+                    .attr("id",d=>"etu"+d["Votre identifiant omeka"])
+                    .attr("class","etu");
             
             divEtu.append("h2").text(function(d) { return d["Votre nom et prénom"]; });
-            divEtu.append("a").attr("href",d=>"https://"+d["Votre login github"]+".github.io/GSI2_SystemInfo_24-25/")
-                .text(d=>d["Votre login github"]+ " page Web")
-            divEtu.append('br')
-            divEtu.append("a").attr("href",d=>"https://"+d["Votre login github"]+".github.io/GSI2_SystemInfo_24-25/arguments.html")
-                .text(d=>d["Votre login github"]+ " page arguments")
-            divEtu.append('br')
-            divEtu.append("a").attr("href",d=>"https://github.com/"+d["Votre login github"]+"/GSI2_SystemInfo_24-25/")
-                .text(d=>d["Votre login github"]+ " sources")
-            divEtu.append('br')
-            divEtu.append('button')
+            //construction du tableau pour chaque étudiant
+            let liensEtu = divEtu.append('div').attr('id',(d,i)=>"liensEtu"+i).attr('class','liens');         
+            liensEtu.append("a").attr("href",d=>"https://github.com/"+d["Votre login github"]+"/GSI2_SystemInfo_24-25/")
+                .text(d=>d["Votre login github"]+ " sources exercices")
+            liensEtu.append("a").attr("href",d=>"https://"+d["Votre login github"]+".github.io/GSI2_SystemInfo_24-25/")
+                .text(d=>"Page Test")
+            liensEtu.append("a").attr("href",d=>"https://"+d["Votre login github"]+".github.io/GSI2_SystemInfo_24-25/arguments.html")
+                .text(d=>"Page arguments")
+            liensEtu.append('div').append('button')
                     .text('Voir les arguments')
                     .on('click',showArguments);
 
@@ -51,7 +67,7 @@
         function showArguments(e,d){
             console.log(e,d);
             //supprimer les anciennes informations
-            d3.select('#etu'+d.id).select('ul').remove();
+            d3.select('#etu'+d["Votre identifiant omeka"]).select('ul').remove();
             //récupérer d'omk la lsite des argument d'un participant
             d3.json("https://argument.generateur.art/api/items?resource_class_id=107&owner_id="+d["Votre identifiant omeka"])
             .then(rs=>{
@@ -59,22 +75,49 @@
                 //ajouter la liste des argument du participant
                 let ulEtuArgu = d3.select('#etu'+d["Votre identifiant omeka"]).append('ul'),
                 //ajoute chaque argument
-                arguments = ulEtuArgu.selectAll('li').data(rs).enter().append('li')
-                    .attr('id',d=>'argu'+d['o:id'])
+                argus = ulEtuArgu.selectAll('li').data(rs).enter().append('li')
+                    .attr('class','argu')
+                    .attr('id',d=>'argu'+d['o:id']),
+                //ajouter les infos de l'argument
+                liensArgu = argus.append('div').attr('id',(d,i)=>"liensArgu"+i).attr('class','liens'),         
+                                //les possibilités génératives
+                //le div des propriétés de l'argument
+                propsArgu = argus.append('div').attr('id',d=>"propArgu"+d['o:id']).attr('class','props'),
+                props = ["o:created","dcterms:description","argu:hasFamilleArgu","argu:hasRegistre","dcterms:subject"],
+                //ajoute les propriétés de l'argument
+                liProps = propsArgu.append('ul').selectAll('li').data(d=>props.map(p=>{
+                    return {'p':p,d:d};
+                })).enter().append('li'),
+                liensVirtual = argus.append('div').attr('id',d=>"virtualArgu"+d['o:id']).attr('class','liens')
+                    .selectAll('span').data(d=>d["argu:generateur"].slice(1)).enter().append('span').html(d=>{
+                        if(d.type=='resource')
+                            return "<a target-'_blank' href='"+d['@id'].replace('api/items','admin/item')+"'>"+d.display_title+"</a>";
+                        else 
+                            return d['@value']; 
+                });
+
+                liProps.selectAll('p').data((d,i)=>Array.isArray(d.d[d.p])?d.d[d.p]:[d.d[d.p]]).enter().append('p').html(d=>{
+                    let s = (d.property_label ? d.property_label+' = ' : '')+(d.display_title ? d.display_title : d["@value"]);
+                    return '<span>'+s+'</span>'
+                })
+
                 //Ajoute le lien vers l'argument dans omk
-                arguments.append('a')
+                liensArgu.append('a')
                     .attr('href',d=>'https://argument.generateur.art/admin/item/'+d['o:id'])
                     .attr('target','_blanck')
                     .text(d=>d["o:title"]);
-                arguments.append('button')
+                //le bouton de génération
+                liensArgu.append('button')
                     .text('Générer des arguments')
                     .on('click',genereArgument);
 
+                //et le div de résultat
+                argus.append('div').attr('id',d=>"resultArgu"+d['o:id']).attr('class','result');
             })
         }
 
         function genereArgument(e,arg){
-            let argu = d3.select('#argu'+arg['o:id']);
+            let argu = d3.select('#resultArgu'+arg['o:id']);
             argu.select('div').remove();            
             let divTxtArgu = argu.append('div');
             divTxtArgu.selectAll('span').data(arg["argu:generateur"]).enter().append('span')
@@ -98,9 +141,10 @@
                     //récupère les description des la ressource
                     let listeDesc = rs['dcterms:description'],
                     //choisi une description dans la liste
-                    choixDesc = listeDesc[d3.randomInt(listeDesc.length-1)()];
+                    alea = d3.randomInt(listeDesc.length-1)(), 
+                    choixDesc = listeDesc[alea];
                     //affiche le description choisie
-                    d3.select('#'+d.idSpan).attr("class","gen").text(choixDesc['@value']);
+                    d3.select('#'+d.idSpan).attr("class","gen").text(choixDesc['@value']+" ("+(alea+1)+"/"+listeDesc.length+") ");
                 });
         }         
 

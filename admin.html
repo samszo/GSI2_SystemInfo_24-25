@@ -97,6 +97,7 @@
                 });
 
                 liProps.selectAll('p').data((d,i)=>Array.isArray(d.d[d.p])?d.d[d.p]:[d.d[d.p]]).enter().append('p').html(d=>{
+                    if(!d)return 'vide';
                     let s = (d.property_label ? d.property_label+' = ' : '')+(d.display_title ? d.display_title : d["@value"]);
                     return '<span>'+s+'</span>'
                 })
